@@ -10,53 +10,56 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class Master<K, V> {
+import mapreduce.worker.MapWorker;
+import mapreduce.worker.ReduceWorker;
+
+public class MapReduce<K, V> implements Emitter<K, V> {
     
     private ConcurrentLinkedQueue<KeyValue<String, String>> mapTaskQueue = new ConcurrentLinkedQueue<>();
     private ConcurrentLinkedQueue<KeyValue<K, V []>> reduceTaskQueue = new ConcurrentLinkedQueue<>();
     
-    private MapThread<K, V> [] mapThreads = null;
-    private ReduceThread<K, V> [] reduceThreads = null;
+    private MapWorker<K, V> [] mapThreads = null;
+    private ReduceWorker<K, V> [] reduceThreads = null;
     
     
     private ArrayList<KeyValue<K, V>> emits = new ArrayList<>();
     
-    public Master(int mapThreadCount, int reduceThreadCount) {
-        MapThread<K, V> dummyMapThread = new MapThread<>(mapTaskQueue);
-        ReduceThread<K, V> dummyReduceThread = new ReduceThread<>(reduceTaskQueue);
+    public MapReduce(int mapThreadCount, int reduceThreadCount) {
+    	//stupid generic arrays
+    	MapWorker<K, V> dummyMapThread = new MapWorker<>(mapTaskQueue, this);
+    	ReduceWorker<K, V> dummyReduceThread = new ReduceWorker<>(reduceTaskQueue);
         
         dummyMapThread.kill();
         dummyReduceThread.kill();
         
-        mapThreads = (MapThread<K, V> []) Array.newInstance(dummyMapThread.getClass(), mapThreadCount);
-        reduceThreads = (ReduceThread<K, V> []) Array.newInstance(dummyReduceThread.getClass(), reduceThreadCount);
+        mapThreads = (MapWorker<K, V> []) Array.newInstance(dummyMapThread.getClass(), mapThreadCount);
+        reduceThreads = (ReduceWorker<K, V> []) Array.newInstance(dummyReduceThread.getClass(), reduceThreadCount);
         
         for (int i = 0;i < mapThreads.length;i++) {
-            mapThreads[i] = new MapThread<K, V>(mapTaskQueue);
+            mapThreads[i] = new MapWorker<K, V>(mapTaskQueue, this);
         }
         
         for (int i = 0;i < reduceThreads.length;i++) {
-            reduceThreads[i] = new ReduceThread<K, V>(reduceTaskQueue);
+            reduceThreads[i] = new ReduceWorker<K, V>(reduceTaskQueue);
         }
     }
     
-    public void kill() {
-        for (MapThread<K, V> t : mapThreads) {
+    public void killThreads() {
+        for (MapWorker<K, V> t : mapThreads) {
             t.kill();
         }
         
-        for (ReduceThread<K, V> t : reduceThreads) {
+        for (ReduceWorker<K, V> t : reduceThreads) {
             t.kill();
         }
     }
     
-    public void applyMap(Map<K, V> mapper) {
-        System.out.println("apply map");
+    public void applyMap(Map<K, V> mapFunction, String inputDirectory) {
+    	long startTime = System.currentTimeMillis();
         
-        File [] mapTaskFiles = new File("input").listFiles();
-        mapper.setMaster(this);
-        
-        //add all tasks to mapQueue
+        File [] mapTaskFiles = new File(inputDirectory).listFiles();
+
+        //read tasks from provided directory into mapTaskQueue
         for (File f : mapTaskFiles) {
             if (f.isDirectory()) continue;
             String fileName = f.getName();
@@ -65,21 +68,18 @@ public class Master<K, V> {
             mapTaskQueue.add(new KeyValue<String, String>(fileName, fileContent));
         }
         
-        System.out.println("tasks created");
-        
         //start map threads
-        for (MapThread<K, V> t : mapThreads) {
-            t.startMapper(mapper);
+        for (MapWorker<K, V> t : mapThreads) {
+        	t.setMapFunction(mapFunction);
+            t.startProcessing();
         }
-        
-        System.out.println("mappers started");
         
         //wait for map threads to finish
-        for (MapThread<K, V> t : mapThreads) {
-            t.waitForMapper();
+        for (MapWorker<K, V> t : mapThreads) {
+            t.waitForProcessing();
         }
-        
-        System.out.println("all mappers finished!");
+
+        System.out.println("Mapping finished in " + (System.currentTimeMillis() - startTime) + " milliseconds");
     }
     
     private String readFileContent(File f) {
@@ -104,8 +104,8 @@ public class Master<K, V> {
         }
     }
     
-    public void applyReduce(Reduce<K, V> reduce) {
-        System.out.println("applyReduce");
+    public void applyReduce(Reduce<K, V> reduceFunction, String output) {
+        long startTime = System.currentTimeMillis();
         
         KeyValue<K, V []> [] shuffeled = shuffle();
         
@@ -123,27 +123,22 @@ public class Master<K, V> {
             reduceTaskQueue.add(kv);
         }
         
-        System.out.println("reduce queue filled");
-        
         //start reduce workers
-        for (ReduceThread<K, V> t : reduceThreads) {
-            t.startReducer(reduce);
+        for (ReduceWorker<K, V> t : reduceThreads) {
+        	t.setReduceFunctio(reduceFunction);
+            t.startProcessing();
         }
-        
-        System.out.println("reduce workers started");
         
         ArrayList<KeyValue<K, String>> resultList = new ArrayList<>();
         
         //wait for reduce workers to finish
-        for (ReduceThread<K, V> t : reduceThreads) {
-            resultList.addAll(t.waitForReducer());
+        for (ReduceWorker<K, V> t : reduceThreads) {
+            resultList.addAll(t.waitForProcessing());
         }
-        
-        System.out.println("reduce workers finished");
         
         //write results to a file
         try {
-            File outFile = new File("output/output.txt");
+            File outFile = new File(output + "/output.txt");
             BufferedWriter writer = new BufferedWriter(new FileWriter(outFile));
             
             for (KeyValue<K, String> r : resultList) {
@@ -155,12 +150,15 @@ public class Master<K, V> {
             e.printStackTrace();
         }
         
+        System.out.println("Reducing finished in " + (System.currentTimeMillis() - startTime) + " milliseconds");
+        
     }
     
     private KeyValue<K, V []> [] shuffle() {
         
         HashMap<K, ArrayList<V>> shuffleMap = new HashMap<>();
         
+        //group all keyvalue pairs by key using a hashmap, using an arraylist as values in the hashmap
         for (KeyValue<K, V> kv : emits) {
             if (!shuffleMap.containsKey(kv.getKey())) {
                 shuffleMap.put(kv.getKey(), new ArrayList<V>());
@@ -169,11 +167,12 @@ public class Master<K, V> {
             shuffleMap.get(kv.getKey()).add(kv.getValue());
         }
         
+        //now convert hashmap into keyvalue array using stupid hacks
+        //stupid generic arrays
         KeyValue<K, V []> dummy = new KeyValue<K, V []>(null, null);
-        
         KeyValue<K, V []> [] shuffle = (KeyValue<K, V []> []) Array.newInstance(dummy.getClass(), shuffleMap.size());
         
-        
+        //dummy array so that ArrayList can be converted into plain array
         V [] dummyArray = (V []) new Object[1];
         
         int i = 0;
@@ -187,8 +186,9 @@ public class Master<K, V> {
         return shuffle;
     }
 
-    public void emit(K key, V value) {
-        emits.add(new KeyValue<K, V>(key, value));
-    }
+	@Override
+	public void emit(K key, V value) {
+		emits.add(new KeyValue<K, V>(key, value));
+	}
     
 }
