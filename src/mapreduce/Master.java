@@ -40,6 +40,16 @@ public class Master<K, V> {
         }
     }
     
+    public void kill() {
+        for (MapThread<K, V> t : mapThreads) {
+            t.kill();
+        }
+        
+        for (ReduceThread<K, V> t : reduceThreads) {
+            t.kill();
+        }
+    }
+    
     public void applyMap(Map<K, V> mapper) {
         System.out.println("apply map");
         
