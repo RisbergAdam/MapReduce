@@ -40,10 +40,11 @@ public class Master<K, V> {
         }
     }
     
-    public void applyMap(Map<K, V> mapper, String inputPath) {
+    public void applyMap(Map<K, V> mapper) {
         System.out.println("apply map");
         
-        File [] mapTaskFiles = new File(inputPath).listFiles();
+        File [] mapTaskFiles = new File("input").listFiles();
+        mapper.setMaster(this);
         
         //add all tasks to mapQueue
         for (File f : mapTaskFiles) {

@@ -4,18 +4,13 @@ public class MRTest {
 
     public static void main(String [] arg) {
         Master<String, Integer> master = new Master<>(1, 1);
-        master.applyMap(new TestMap(master), "input");
+        master.applyMap(new TestMap());
         master.applyReduce(new TestReduce());
     }
     
 }
 
 class TestMap extends Map<String, Integer> {
-
-    public TestMap(Master<String, Integer> master) {
-        super(master);
-        // TODO Auto-generated constructor stub
-    }
 
     @Override
     public void map(String fileName, String fileContent) {
