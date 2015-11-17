@@ -1,6 +1,6 @@
 package mapreduce;
 
-public class MRTest {
+public class Example {
 
     public static void main(String [] arg) {
         MapReduce<String, Integer> master = new MapReduce<>(1, 1);
