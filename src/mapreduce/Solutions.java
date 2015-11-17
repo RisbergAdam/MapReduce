@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
 
-public class Example {
+public class Solutions {
 
 	public static void main(String[] arg) {
 	    Scanner scanner = new Scanner(System.in);
@@ -38,32 +38,6 @@ public class Example {
 		master.killThreads();
 	}
 
-}
-
-class TestMap implements Map<String, Integer> {
-
-	@Override
-	public void map(String fileName, String fileContent, Emitter<String, Integer> emitter) {
-		fileContent = fileContent.replace("\n", " ").replace("\r", " ");
-		String[] words = fileContent.split(" ");
-		for (String word : words) {
-			emitter.emit(word.toLowerCase().trim(), 1);
-		}
-	}
-
-}
-
-class TestReduce implements Reduce<String, Integer> {
-
-	public String reduce(String key, Integer[] values) {
-		int total = 0;
-
-		for (Integer i : values) {
-			total += i;
-		}
-
-		return "" + total;
-	}
 }
 
 class GraphConversionMap implements Map<String, String> {

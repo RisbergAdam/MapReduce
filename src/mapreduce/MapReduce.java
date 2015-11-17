@@ -187,7 +187,7 @@ public class MapReduce<K, V> implements Emitter<K, V> {
     }
 
 	@Override
-	public void emit(K key, V value) {
+	public synchronized void emit(K key, V value) {
 		emits.add(new KeyValue<K, V>(key, value));
 	}
     
