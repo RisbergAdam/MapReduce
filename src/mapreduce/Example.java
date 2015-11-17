@@ -4,14 +4,37 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Scanner;
 import java.util.Set;
 
 public class Example {
 
 	public static void main(String[] arg) {
-		MapReduce<String, String> master = new MapReduce<>(1, 1);
-		master.applyMap(new NumberOfTrianglesMap(), "input");
-		master.applyReduce(new NumberOfTrianglesReduce(), "output");
+	    Scanner scanner = new Scanner(System.in);
+	    System.out.print("Enter input directory: ");
+
+	    String input = scanner.next();
+
+	    System.out.print("Enter output directory: ");
+
+	    String output = scanner.next();
+	    
+	    System.out.print("Enter number of map threads: ");
+	    
+	    int mapThreads = scanner.nextInt();
+	    
+	    System.out.print("Enter number of reduce threads: ");
+	    
+	    int reduceThreads = scanner.nextInt();
+
+
+
+		
+		
+		
+		MapReduce<String, String> master = new MapReduce<>(mapThreads, reduceThreads);
+		master.applyMap(new NumberOfTrianglesMap(), input);
+		master.applyReduce(new NumberOfTrianglesReduce(), output);
 		master.killThreads();
 	}
 
