@@ -142,7 +142,7 @@ public class MapReduce<K, V> implements Emitter<K, V> {
             BufferedWriter writer = new BufferedWriter(new FileWriter(outFile));
             
             for (KeyValue<K, String> r : resultList) {
-                writer.write("" + r.getKey() + ": " + r.getValue() + "\n");
+                writer.write(r.getValue() + "\n");
             }
             
             writer.close();
