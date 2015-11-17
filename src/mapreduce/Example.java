@@ -132,7 +132,8 @@ class NumberOfTrianglesMap implements Map<String, String> {
 		String prev = "";
 		for (String word : words) {
 			String[] tmp = word.split(",");
-			if (tmp[0].equals(prev)) continue;
+			if (tmp[0].equals(prev))
+				continue;
 			prev = tmp[0];
 			for (String wordInner : words) {
 				emitter.emit(tmp[0], wordInner);
@@ -150,12 +151,12 @@ class NumberOfTrianglesReduce implements Reduce<String, String> {
 		Set<String> set = new HashSet<String>();
 		Set<String> set2 = new HashSet<String>();
 
-		
-
 		for (int i = 0; i < end; i++) {
-			String [] vals = values[i].split(",");
-			if (vals[0].equals(key)) set2.add(vals[1]);
-			if (vals[1].equals(key)) set2.add(vals[0]);
+			String[] vals = values[i].split(",");
+			if (vals[0].equals(key))
+				set2.add(vals[1]);
+			if (vals[1].equals(key))
+				set2.add(vals[0]);
 			set.add(values[i]);
 		}
 		StringBuilder stringBuilder = new StringBuilder();
@@ -163,9 +164,9 @@ class NumberOfTrianglesReduce implements Reduce<String, String> {
 		int count = 0;
 		for (String friend : set) {
 			String[] parts = friend.split(",");
-			if(set2.contains(parts[0]) && set2.contains(parts[1])){
+			if (set2.contains(parts[0]) && set2.contains(parts[1])) {
 				count++;
-				
+
 			}
 
 		}
