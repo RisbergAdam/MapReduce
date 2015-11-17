@@ -20,9 +20,8 @@ public class MapReduce<K, V> implements Emitter<K, V> {
     
     private MapWorker<K, V> [] mapThreads = null;
     private ReduceWorker<K, V> [] reduceThreads = null;
-    
-    
-    private ArrayList<KeyValue<K, V>> emits = new ArrayList<>();
+
+    private ConcurrentLinkedQueue<KeyValue<K, V>> emits = new ConcurrentLinkedQueue<KeyValue<K,V>>();
     
     public MapReduce(int mapThreadCount, int reduceThreadCount) {
     	//stupid generic arrays
@@ -187,7 +186,7 @@ public class MapReduce<K, V> implements Emitter<K, V> {
     }
 
 	@Override
-	public synchronized void emit(K key, V value) {
+	public void emit(K key, V value) {
 		emits.add(new KeyValue<K, V>(key, value));
 	}
     
