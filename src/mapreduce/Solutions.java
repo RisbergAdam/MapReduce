@@ -3,6 +3,7 @@ package mapreduce;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
@@ -10,37 +11,98 @@ import java.util.Set;
 public class Solutions {
 
 	public static void main(String[] arg) {
-	    Scanner scanner = new Scanner(System.in);
-	    System.out.print("Enter input directory: ");
+		Scanner scanner = new Scanner(System.in);
+		System.out.print("Enter input directory: ");
 
-	    String input = scanner.next();
+		String input = scanner.next();
 
-	    System.out.print("Enter output directory: ");
+		System.out.print("Enter output directory: ");
 
-	    String output = scanner.next();
-	    
-	    System.out.print("Enter number of map threads: ");
-	    
-	    int mapThreads = scanner.nextInt();
-	    
-	    System.out.print("Enter number of reduce threads: ");
-	    
-	    int reduceThreads = scanner.nextInt();
+		String output = scanner.next();
 
+		System.out.print("Enter number of map threads: ");
 
+		int mapThreads = scanner.nextInt();
 
-		
-		
-		
+		System.out.print("Enter number of reduce threads: ");
+
+		int reduceThreads = scanner.nextInt();
+
+		System.out.print(
+				"What program to run (1-4)?  \n1. WordCount\n2. GraphConversion\n3. CommonFriends\n4. TriangleFriends\n");
+
+		int program = scanner.nextInt();
+
 		MapReduce<String, String> master = new MapReduce<>(mapThreads, reduceThreads);
-		master.applyMap(new NumberOfTrianglesMap(), input);
-		master.applyReduce(new NumberOfTrianglesReduce(), output);
+
+		switch (program) {
+		case 1:
+			WordCount wordCount = new WordCount();
+			MapReduce<String, Integer> master2 = new MapReduce<>(mapThreads, reduceThreads);
+			master2.applyMap(wordCount, input);
+			master2.applyReduce(wordCount, output);
+			master2.killThreads();
+			break;
+		case 2:
+			GraphConversion graphConversion = new GraphConversion();
+			master.applyMap(graphConversion, input);
+			master.applyReduce(graphConversion, output);
+			master.killThreads();
+			break;
+		case 3:
+			CommonFriends commonFriends = new CommonFriends();
+			master.applyMap(commonFriends, input);
+			master.applyReduce(commonFriends, output);
+			master.killThreads();
+			break;
+		case 4:
+			NumberOfTriangles numberOfTriangles = new NumberOfTriangles();
+			master.applyMap(numberOfTriangles, input);
+			master.applyReduce(numberOfTriangles, output);
+			master.killThreads();
+			break;
+		default:
+			break;
+		}
 		master.killThreads();
 	}
 
 }
 
-class GraphConversionMap implements Map<String, String> {
+class WordCount implements Reduce<String, Integer>, Map<String, Integer> {
+
+	@Override
+	public void map(String fileName, String fileContent, Emitter<String, Integer> emitter) {
+		String[] lines = fileContent.split("\n");
+		for (String line : lines) {
+			String[] words = line.split(" ");
+			for (String word : words) {
+				emitter.emit(word, 1);
+			}
+		}
+
+	}
+
+	@Override
+	public String reduce(String key, Integer[] values) {
+		return key + " " + values.length;
+	}
+
+}
+
+class GraphConversion implements Reduce<String, String>, Map<String, String> {
+
+	@Override
+	public String reduce(String key, String[] values) {
+		StringBuilder stringBuilder = new StringBuilder();
+		stringBuilder.append(key + " # ");
+		Set<String> map = new HashSet<String>();
+		for (String val : values) {
+			if (map.add(val))
+				stringBuilder.append(val + " ");
+		}
+		return stringBuilder.toString();
+	}
 
 	@Override
 	public void map(String fileName, String fileContent, Emitter<String, String> emitter) {
@@ -56,22 +118,7 @@ class GraphConversionMap implements Map<String, String> {
 
 }
 
-class GraphConversionReduce implements Reduce<String, String> {
-
-	@Override
-	public String reduce(String key, String[] values) {
-		StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append(key + " # ");
-		for (String val : values) {
-			stringBuilder.append(val + " ");
-		}
-
-		return stringBuilder.toString();
-	}
-
-}
-
-class CommonFriendsMap implements Map<String, String> {
+class CommonFriends implements Map<String, String>, Reduce<String, String> {
 
 	@Override
 	public void map(String fileName, String fileContent, Emitter<String, String> emitter) {
@@ -96,14 +143,10 @@ class CommonFriendsMap implements Map<String, String> {
 		}
 
 	}
-}
-
-class CommonFriendsReduce implements Reduce<String, String> {
 
 	@Override
 	public String reduce(String key, String[] values) {
 		StringBuilder stringBuilder = new StringBuilder();
-		System.out.println(values.length);
 		ArrayList<String> all = new ArrayList<String>(Arrays.asList(values));
 		ArrayList<String> some = new ArrayList<>();
 		stringBuilder.append(key + " # ");
@@ -118,7 +161,7 @@ class CommonFriendsReduce implements Reduce<String, String> {
 	}
 }
 
-class NumberOfTrianglesMap implements Map<String, String> {
+class NumberOfTriangles implements Map<String, String>, Reduce<String, String> {
 
 	@Override
 	public void map(String fileName, String fileContent, Emitter<String, String> emitter) {
@@ -126,21 +169,15 @@ class NumberOfTrianglesMap implements Map<String, String> {
 		for (int i = 0; i < words.length; i++) {
 			words[i] = words[i].replace("(", "").replace(")", "");
 		}
-		String prev = "";
 		for (String word : words) {
 			String[] tmp = word.split(",");
-			if (tmp[0].equals(prev))
-				continue;
-			prev = tmp[0];
-			for (String wordInner : words) {
-				emitter.emit(tmp[0], wordInner);
+			int nr = Integer.parseInt(tmp[0]);
+
+			for (int i = 0; i <= nr; i++) {
+				emitter.emit(i + "", word);
 			}
 		}
-
 	}
-}
-
-class NumberOfTrianglesReduce implements Reduce<String, String> {
 
 	@Override
 	public String reduce(String key, String[] values) {
@@ -171,4 +208,5 @@ class NumberOfTrianglesReduce implements Reduce<String, String> {
 		return stringBuilder.toString();
 
 	}
+
 }
