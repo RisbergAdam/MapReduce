@@ -1,5 +1,6 @@
 package mapreduce.worker;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import mapreduce.Emitter;
@@ -11,8 +12,8 @@ public class MapWorker<K, V> extends Worker<String, String, Void>{
 	private Map<K, V> mapFunction = null;
 	private Emitter<K, V> emitter = null;
 	
-	public MapWorker(ConcurrentLinkedQueue<KeyValue<String, String>> reduceTaskQueue, Emitter<K, V> emitter) {
-		super(reduceTaskQueue);
+	public MapWorker(BlockingQueue<KeyValue<String, String>> taskQueue, Emitter<K, V> emitter) {
+		super(taskQueue);
 		this.emitter = emitter;
 	}
 	

@@ -2,6 +2,7 @@ package mapreduce.worker;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
@@ -13,14 +14,13 @@ public abstract class Worker <K, V, R> implements Runnable {
     private Semaphore workWait = new Semaphore(0);
     private Semaphore masterWait = new Semaphore(1);
     
-    private Reduce<K, V> reduce = null;
-    private ConcurrentLinkedQueue<KeyValue<K, V>> reduceTaskQueue = null;
+    private BlockingQueue<KeyValue<K, V>> taskQueue = null;
     private ArrayList<R> result = new ArrayList<>();
     
     private boolean isKill = false;
 
-    public Worker(ConcurrentLinkedQueue<KeyValue<K, V>> reduceTaskQueue) {
-        this.reduceTaskQueue = reduceTaskQueue;
+    public Worker(BlockingQueue<KeyValue<K, V>> taskQueue) {
+        this.taskQueue = taskQueue;
         new Thread(this).start();
     }
     
@@ -64,8 +64,7 @@ public abstract class Worker <K, V, R> implements Runnable {
                 
                 KeyValue<K, V> task = null;
                 
-                while ((task = reduceTaskQueue.poll()) != null && !isKill) {
-                    
+                while ((task = taskQueue.take()).getKey() != null && !isKill) {
                     //ugly hack in order to cast task.getValue() array as its actual type
                     /*Class c = task.getValue()[0].getClass();
                     V [] v = (V []) Array.newInstance(c, task.getValue().length);

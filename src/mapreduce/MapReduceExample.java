@@ -1,11 +1,13 @@
 package mapreduce;
 
+import java.util.Scanner;
+
 //simple example where occurences of words in a file are counted
 
 public class MapReduceExample {
 
     public static void main(String [] arg) {
-        MapReduce<String, Integer> master = new MapReduce<>(1, 1);
+    	MapReduce<String, Integer> master = new MapReduce<>(1, 1);
         master.applyMap(new TestMap(), "input");
         master.applyReduce(new TestReduce(), "output");
         master.killThreads();
@@ -17,11 +19,18 @@ class TestMap implements Map<String, Integer> {
 
     @Override
     public void map(String fileName, String fileContent, Emitter<String, Integer> emitter) {
-        String [] words = fileContent.split(" ");
-        
-        for (String word : words) {
-            emitter.emit(word.toLowerCase().trim(), 1);
-        }
+    	/*String [] words = fileContent.split(" ");
+    
+    	for (String word : words) {
+        	emitter.emit(word.toLowerCase().replace("\n", ""), 1);
+        }*/
+    	
+    	System.out.println(fileName);
+    	
+    	Scanner sc = new Scanner(fileContent);
+    	
+    	while (sc.hasNext()) emitter.emit(sc.next().toLowerCase().replace("\n", ""), 1);
+
     }
     
 }
@@ -35,7 +44,7 @@ class TestReduce implements Reduce<String, Integer> {
             total += i;
         }
         
-        return "" + total;
+        return key + ": " + total;
     }
     
 }

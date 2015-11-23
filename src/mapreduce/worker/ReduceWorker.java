@@ -1,6 +1,7 @@
 package mapreduce.worker;
 
 import java.lang.reflect.Array;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import mapreduce.KeyValue;
@@ -10,8 +11,8 @@ public class ReduceWorker<K, V> extends Worker<K, V [], KeyValue<K, String>> {
 
 	private Reduce<K, V> reduceFunction = null;
 	
-	public ReduceWorker(ConcurrentLinkedQueue<KeyValue<K, V[]>> reduceTaskQueue) {
-		super(reduceTaskQueue);
+	public ReduceWorker(BlockingQueue<KeyValue<K, V[]>> taskQueue) {
+		super(taskQueue);
 	}
 	
 	public void setReduceFunctio(Reduce<K, V> reduceFunction) {
