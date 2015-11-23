@@ -8,15 +8,20 @@ import java.io.FileWriter;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import mapreduce.worker.MapWorker;
 import mapreduce.worker.ReduceWorker;
 
 public class MapReduce<K, V> implements Emitter<K, V> {
     
-    private ConcurrentLinkedQueue<KeyValue<String, String>> mapTaskQueue = new ConcurrentLinkedQueue<>();
-    private ConcurrentLinkedQueue<KeyValue<K, V []>> reduceTaskQueue = new ConcurrentLinkedQueue<>();
+    //private ConcurrentLinkedQueue<KeyValue<String, String>> mapTaskQueue = new ConcurrentLinkedQueue<>();
+    //private ConcurrentLinkedQueue<KeyValue<K, V []>> reduceTaskQueue = new ConcurrentLinkedQueue<>();
+	private BlockingQueue<KeyValue<String, String>> mapTaskQueue = new LinkedBlockingQueue<KeyValue<String,String>>();
+	private BlockingQueue<KeyValue<K, V []>> reduceTaskQueue = new LinkedBlockingQueue<KeyValue<K, V []>>();
     
     private MapWorker<K, V> [] mapThreads = null;
     private ReduceWorker<K, V> [] reduceThreads = null;
@@ -57,7 +62,13 @@ public class MapReduce<K, V> implements Emitter<K, V> {
     	long startTime = System.currentTimeMillis();
         
         File [] mapTaskFiles = new File(inputDirectory).listFiles();
-
+        
+        //start map threads
+        for (MapWorker<K, V> t : mapThreads) {
+        	t.setMapFunction(mapFunction);
+            t.startProcessing();
+        }
+        
         //read tasks from provided directory into mapTaskQueue
         for (File f : mapTaskFiles) {
             if (f.isDirectory()) continue;
@@ -67,10 +78,8 @@ public class MapReduce<K, V> implements Emitter<K, V> {
             mapTaskQueue.add(new KeyValue<String, String>(fileName, fileContent));
         }
         
-        //start map threads
         for (MapWorker<K, V> t : mapThreads) {
-        	t.setMapFunction(mapFunction);
-            t.startProcessing();
+        	mapTaskQueue.add(new KeyValue<String, String>(null, null));
         }
         
         //wait for map threads to finish
@@ -124,6 +133,7 @@ public class MapReduce<K, V> implements Emitter<K, V> {
         
         //start reduce workers
         for (ReduceWorker<K, V> t : reduceThreads) {
+        	reduceTaskQueue.add(new KeyValue<K, V []>(null, null));
         	t.setReduceFunctio(reduceFunction);
             t.startProcessing();
         }
