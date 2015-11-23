@@ -65,7 +65,6 @@ public abstract class Worker <K, V, R> implements Runnable {
                 KeyValue<K, V> task = null;
                 
                 while ((task = taskQueue.take()).getKey() != null && !isKill) {
-                    
                     //ugly hack in order to cast task.getValue() array as its actual type
                     /*Class c = task.getValue()[0].getClass();
                     V [] v = (V []) Array.newInstance(c, task.getValue().length);
