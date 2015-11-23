@@ -6,15 +6,20 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.lang.reflect.Array;
+import java.util.AbstractCollection;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import mapreduce.worker.MapWorker;
 import mapreduce.worker.ReduceWorker;
+import mapreduce.worker.ShuffleWorker;
 
 public class MapReduce<K, V> implements Emitter<K, V> {
     
@@ -26,8 +31,9 @@ public class MapReduce<K, V> implements Emitter<K, V> {
     private MapWorker<K, V> [] mapThreads = null;
     private ReduceWorker<K, V> [] reduceThreads = null;
 
-    private ConcurrentLinkedQueue<KeyValue<K, V>> emits = new ConcurrentLinkedQueue<KeyValue<K,V>>();
-    
+    //private BlockingQueue<KeyValue<K, V>> emits = new ArrayBlockingQueue<KeyValue<K,V>>(16);
+    private AbstractMap<K, AbstractCollection<V>> shuffleMap = new HashMap<>();
+
     public MapReduce(int mapThreadCount, int reduceThreadCount) {
     	//stupid generic arrays
     	MapWorker<K, V> dummyMapThread = new MapWorker<>(mapTaskQueue, this);
@@ -46,6 +52,7 @@ public class MapReduce<K, V> implements Emitter<K, V> {
         for (int i = 0;i < reduceThreads.length;i++) {
             reduceThreads[i] = new ReduceWorker<K, V>(reduceTaskQueue);
         }
+        
     }
     
     public void killThreads() {
@@ -164,17 +171,16 @@ public class MapReduce<K, V> implements Emitter<K, V> {
     }
     
     private KeyValue<K, V []> [] shuffle() {
-        
         HashMap<K, ArrayList<V>> shuffleMap = new HashMap<>();
         
         //group all keyvalue pairs by key using a hashmap, using an arraylist as values in the hashmap
-        for (KeyValue<K, V> kv : emits) {
+        /*for (KeyValue<K, V> kv : emits) {
             if (!shuffleMap.containsKey(kv.getKey())) {
                 shuffleMap.put(kv.getKey(), new ArrayList<V>());
             }
             
             shuffleMap.get(kv.getKey()).add(kv.getValue());
-        }
+        }*/
         
         //now convert hashmap into keyvalue array using stupid hacks
         //stupid generic arrays
@@ -196,8 +202,13 @@ public class MapReduce<K, V> implements Emitter<K, V> {
     }
 
 	@Override
-	public void emit(K key, V value) {
-		emits.add(new KeyValue<K, V>(key, value));
+	public synchronized void emit(K key, V value) {
+        if (!shuffleMap.containsKey(key)) {
+            shuffleMap.put(key, new ArrayList<V>(16));
+        }
+        
+        shuffleMap.get(key).add(value);
+			
 	}
     
 }
