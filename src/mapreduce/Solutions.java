@@ -136,8 +136,8 @@ class CommonFriends implements Map<String, String>, Reduce<String, String> {
 						&& (!fTmp[1].equals(tmp[0]) || !fTmp[1].equals(tmp[1])))
 					emitter.emit(ret, fTmp[1]);
 
-				if ((fTmp[1].equals(tmp[0])
-						|| fTmp[1].equals(tmp[1]) && (!fTmp[1].equals(tmp[0]) || !fTmp[1].equals(tmp[1]))))
+				if ((fTmp[1].equals(tmp[0]) || fTmp[1].equals(tmp[1]))
+						&& (!fTmp[1].equals(tmp[0]) || !fTmp[1].equals(tmp[1])))
 					emitter.emit(ret, fTmp[0]);
 			}
 		}
@@ -172,8 +172,10 @@ class NumberOfTriangles implements Map<String, String>, Reduce<String, String> {
 		for (String word : words) {
 			String[] tmp = word.split(",");
 			int nr = Integer.parseInt(tmp[0]);
+			int nr2 = Integer.parseInt(tmp[1]);
+			if (nr2 > nr ) nr = nr2;
 
-			for (int i = 0; i <= nr; i++) {
+			for (int i = 0; i <= nr + 1 ; i++) {
 				emitter.emit(i + "", word);
 			}
 		}
@@ -193,6 +195,7 @@ class NumberOfTriangles implements Map<String, String>, Reduce<String, String> {
 				set2.add(vals[0]);
 			set.add(values[i]);
 		}
+		if (set2.size() == 0) return "";
 		StringBuilder stringBuilder = new StringBuilder();
 		stringBuilder.append(key);
 		int count = 0;
