@@ -19,19 +19,15 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import mapreduce.worker.MapWorker;
 import mapreduce.worker.ReduceWorker;
-import mapreduce.worker.ShuffleWorker;
 
 public class MapReduce<K, V> implements Emitter<K, V> {
     
-    //private ConcurrentLinkedQueue<KeyValue<String, String>> mapTaskQueue = new ConcurrentLinkedQueue<>();
-    //private ConcurrentLinkedQueue<KeyValue<K, V []>> reduceTaskQueue = new ConcurrentLinkedQueue<>();
 	private BlockingQueue<KeyValue<String, String>> mapTaskQueue = new LinkedBlockingQueue<KeyValue<String,String>>();
 	private BlockingQueue<KeyValue<K, V []>> reduceTaskQueue = new LinkedBlockingQueue<KeyValue<K, V []>>();
     
     private MapWorker<K, V> [] mapThreads = null;
     private ReduceWorker<K, V> [] reduceThreads = null;
 
-    //private BlockingQueue<KeyValue<K, V>> emits = new ArrayBlockingQueue<KeyValue<K,V>>(16);
     private AbstractMap<K, AbstractCollection<V>> shuffleMap = new ConcurrentHashMap<>();
     
     private long totalTime = 0;
@@ -174,18 +170,7 @@ public class MapReduce<K, V> implements Emitter<K, V> {
         
     }
     
-    private KeyValue<K, V []> [] shuffle() {
-        //HashMap<K, ArrayList<V>> shuffleMap = new HashMap<>();
-        
-        //group all keyvalue pairs by key using a hashmap, using an arraylist as values in the hashmap
-        /*for (KeyValue<K, V> kv : emits) {
-            if (!shuffleMap.containsKey(kv.getKey())) {
-                shuffleMap.put(kv.getKey(), new ArrayList<V>());
-            }
-            
-            shuffleMap.get(kv.getKey()).add(kv.getValue());
-        }*/
-        
+    private KeyValue<K, V []> [] shuffle() {	        
         //now convert hashmap into keyvalue array using stupid hacks
         //stupid generic arrays
         KeyValue<K, V []> dummy = new KeyValue<K, V []>(null, null);
