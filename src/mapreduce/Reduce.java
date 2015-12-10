@@ -1,7 +1,7 @@
 package mapreduce;
 
-public interface Reduce<K, V> {
+public interface Reduce<K, V1, V2> {
 
-    public String reduce(K key, V [] values);
+    public V2 reduce(K key, V1 [] values);
     
 }
