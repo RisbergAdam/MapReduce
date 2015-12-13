@@ -34,6 +34,7 @@ public class MatrixBenchmark {
 			matrixReduce.add(warmupMatrix, warmupMatrix);
 		}
 		
+		//if benchmark takes too long, reduce matrix-size here
 		Matrix testMatrix1 = Matrix.randMatrix(1000);
 		Matrix testMatrix2 = Matrix.randMatrix(1000);
 		
@@ -53,6 +54,7 @@ public class MatrixBenchmark {
 			matrixReduce.multiply(warmupMatrix, warmupMatrix);
 		}
 		
+		//if benchmark takes too long, reduce matrix-size here
 		Matrix testMatrix1 = Matrix.randMatrix(700);
 		Matrix testMatrix2 = Matrix.randMatrix(700);
 		
@@ -72,6 +74,7 @@ public class MatrixBenchmark {
 			matrixReduce.triangular(warmupMatrix);
 		}
 		
+		//if benchmark takes too long, reduce matrix-size here
 		Matrix testMatrix = Matrix.randMatrix(150);
 		
 		long time = System.currentTimeMillis();
@@ -90,6 +93,7 @@ public class MatrixBenchmark {
 			matrixReduce.determinant(warmupMatrix);
 		}
 		
+		//if benchmark takes too long, reduce matrix-size here
 		Matrix testMatrix = Matrix.randMatrix(11);
 		
 		long time = System.currentTimeMillis();
@@ -108,7 +112,8 @@ public class MatrixBenchmark {
 			matrixReduce.inverse(warmupMatrix);
 		}
 		
-		Matrix testMatrix = Matrix.randMatrix(150);
+		//if benchmark takes too long, reduce matrix-size here
+		Matrix testMatrix = Matrix.randMatrix(130);
 		
 		long time = System.currentTimeMillis();
 		int attempts = 5;
@@ -116,7 +121,7 @@ public class MatrixBenchmark {
 			matrixReduce.inverse(testMatrix);
 		}
 		
-		System.out.println("inverse 150x150: " + (System.currentTimeMillis()-time)/(double)attempts + " ms per operation");
+		System.out.println("inverse 130x130: " + (System.currentTimeMillis()-time)/(double)attempts + " ms per operation");
 	}
 	
 }
