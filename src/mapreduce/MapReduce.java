@@ -30,7 +30,7 @@ public class MapReduce implements Emitter {
     private MapWorker [] mapThreads = null;
     private ReduceWorker [] reduceThreads = null;
 
-    private AbstractMap<Object, AbstractCollection<Object>> shuffleMap = null;//new ConcurrentHashMap(300*300, 0.75f, 4);
+    private ConcurrentHashMap<Object, AbstractCollection<Object>> shuffleMap = null;//new ConcurrentHashMap(300*300, 0.75f, 4);
     
     private long totalTime = 0;
 
