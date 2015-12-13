@@ -75,7 +75,7 @@ public class MatrixBenchmark {
 		}
 		
 		//if benchmark takes too long, reduce matrix-size here
-		Matrix testMatrix = Matrix.randMatrix(150);
+		Matrix testMatrix = Matrix.randMatrix(200);
 		
 		long time = System.currentTimeMillis();
 		int attempts = 5;
@@ -83,7 +83,7 @@ public class MatrixBenchmark {
 			matrixReduce.triangular(testMatrix);
 		}
 		
-		System.out.println("triangulation 150x150: " + (System.currentTimeMillis()-time)/(double)attempts + " ms per operation");
+		System.out.println("triangulation 200x200: " + (System.currentTimeMillis()-time)/(double)attempts + " ms per operation");
 	}
 	
 	private static void benchDeterminant(MatrixReduce matrixReduce) {

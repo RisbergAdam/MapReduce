@@ -32,6 +32,7 @@ public class MatrixReduce extends MapReduce {
 		Matrix o = Matrix.getUnit(m.getValues().length);
 		Matrix mTemp = m;
 		
+		//invoke LowerTriangle once per column to set zeros in begining of rows
 		for (int i = 0;i < m.getValues().length - 1;i++) {
 			Set<Matrix, Matrix> intermediateTriangle = invoke(new LowerTriangular(mTemp, i));
 			o = multiply(intermediateTriangle.v1, o);
@@ -45,12 +46,14 @@ public class MatrixReduce extends MapReduce {
 		Matrix o = Matrix.getUnit(m.getValues().length);
 		Matrix mTemp = m;
 		
+		//invoke LowerTriangle once per column to set zeros in begining of rows
 		for (int i = 0;i < m.getValues().length - 1;i++) {
 			Set<Matrix, Matrix> intermediateTriangle = invoke(new LowerTriangular(mTemp, i));
 			o = multiply(intermediateTriangle.v1, o);
 			mTemp = intermediateTriangle.v2;
 		}
 		
+		//invoke UpperTriangle once per column to set zeros in end of rows
 		for (int i = m.getValues().length - 1;i > 0;i--) {
 			Set<Matrix, Matrix> intermediateTriangle = invoke(new UpperTriangular(mTemp, i));
 			o = multiply(intermediateTriangle.v1, o);
@@ -67,6 +70,8 @@ public class MatrixReduce extends MapReduce {
 		
 		int mSize = o.getValues().length;
 		
+		//matrix returned from diagonal() will not turn o*m into the unit matrix
+		//fix it with this loop
 		for (int y = 0;y < mSize;y++) {
 			for (int x = 0;x < mSize;x++) {
 				o.getValues()[y][x] /= mInt.getValues()[y][y];
