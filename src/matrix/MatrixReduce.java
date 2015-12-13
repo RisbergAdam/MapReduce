@@ -41,7 +41,7 @@ public class MatrixReduce extends MapReduce {
 		return o;
 	}
 	
-	public Matrix diagonal(Matrix m) {
+	private Matrix diagonal(Matrix m) {
 		Matrix o = Matrix.getUnit(m.getValues().length);
 		Matrix mTemp = m;
 		

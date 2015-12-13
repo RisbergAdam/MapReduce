@@ -83,9 +83,6 @@ public class MapReduce implements Emitter {
     }
     
     private <K1, V1, K2, V2> void applyMap(DataSource<K1, V1> source, Map<K1, V1, K2, V2> mapFunction) {
-    	long startTime = System.currentTimeMillis();
-        totalTime = startTime;
-        
         //start map threads
         for (MapWorker t : mapThreads) {
         	t.setMapFunction(mapFunction);
@@ -108,13 +105,9 @@ public class MapReduce implements Emitter {
         for (MapWorker t : mapThreads) {
             t.waitForProcessing();
         }
-
-        System.out.println("Mapping finished in " + (System.currentTimeMillis() - startTime) + " milliseconds");
     }
     
     private <K2, V2, V3> ArrayList<KeyValue<K2, V3>> applyReduce(Reduce<K2, V2, V3> reduceFunction) {
-        long startTime = System.currentTimeMillis();
-        
         KeyValue<K2, V2 []> [] shuffeled = shuffle();
         
         //keep this for future debugging purposes
@@ -144,9 +137,6 @@ public class MapReduce implements Emitter {
         for (ReduceWorker t : reduceThreads) {
             resultList.addAll(t.waitForProcessing());
         }
-        
-        System.out.println("Reducing finished in " + (System.currentTimeMillis() - startTime) + " milliseconds");
-        System.out.println("MapReduce finished in " + (System.currentTimeMillis() - totalTime) + " milliseconds");
         
         return resultList;
     }
