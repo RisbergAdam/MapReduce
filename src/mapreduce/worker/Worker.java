@@ -9,24 +9,24 @@ import java.util.concurrent.Semaphore;
 import mapreduce.KeyValue;
 import mapreduce.Reduce;
 
-public abstract class Worker <K, V, R> implements Runnable {
+public abstract class Worker implements Runnable {
     
     private Semaphore workWait = new Semaphore(0);
     private Semaphore masterWait = new Semaphore(1);
     
-    private BlockingQueue<KeyValue<K, V>> taskQueue = null;
-    private ArrayList<R> result = new ArrayList<>();
+    private BlockingQueue<KeyValue> taskQueue = null;
+    private ArrayList result = null;
     
     private boolean isKill = false;
 
-    public Worker(BlockingQueue<KeyValue<K, V>> taskQueue) {
-        this.taskQueue = taskQueue;
+    public Worker() {
         new Thread(this).start();
     }
     
-    public void startProcessing() {
+    public <K, V, R> void startProcessing(BlockingQueue<KeyValue> taskQueue) {
+    	this.taskQueue = taskQueue;
+    	this.result = new ArrayList<R>();
         try {
-          
             workWait.release();
             masterWait.acquire();
         } catch (Exception e) {
@@ -34,9 +34,10 @@ public abstract class Worker <K, V, R> implements Runnable {
         }
     }
     
-    public ArrayList<R> waitForProcessing() {
+    public ArrayList waitForProcessing() {
         try {
             masterWait.acquire();
+            masterWait.release();
             return result;
         } catch (Exception e) {
             e.printStackTrace();
@@ -59,22 +60,13 @@ public abstract class Worker <K, V, R> implements Runnable {
                 
                 if (isKill) break;
                 
-                //poll queue until null
+                //poll queue until null then go back to idle
                 result.clear();
                 
-                KeyValue<K, V> task = null;
+                KeyValue task = null;
                 
                 while ((task = taskQueue.take()).getKey() != null && !isKill) {
-                    //ugly hack in order to cast task.getValue() array as its actual type
-                    /*Class c = task.getValue()[0].getClass();
-                    V [] v = (V []) Array.newInstance(c, task.getValue().length);
-                    for (int i = 0;i < v.length;i++) {
-                        v[i] = task.getValue()[i];
-                    }*/
-                    //end of ugly hack
-                    
-                    //KeyValue<K, String> r = new KeyValue<K, String>(task.getKey(), reduce.reduce(task.getKey(), v));
-                    R r = doProcessing(task);
+                    Object r = doProcessing(task);
                     if (r == null) continue;
                     result.add(r);
                 }
@@ -88,6 +80,6 @@ public abstract class Worker <K, V, R> implements Runnable {
         
     }
     
-    public abstract R doProcessing(KeyValue<K, V> keyValue);
+    public abstract Object doProcessing(KeyValue keyValue);
 
 }

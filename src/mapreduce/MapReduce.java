@@ -22,94 +22,105 @@ import mapreduce.worker.ReduceWorker;
 //K2 V2 intermediate types
 //V3 output type
 
-public class MapReduce<K1, V1, K2, V2, V3> implements Emitter<K2, V2> {
+public class MapReduce implements Emitter {
     
-	private BlockingQueue<KeyValue<K1, V1>> mapTaskQueue = new LinkedBlockingQueue<KeyValue<K1, V1>>();
-	private BlockingQueue<KeyValue<K2, V2 []>> reduceTaskQueue = new LinkedBlockingQueue<KeyValue<K2, V2 []>>();
+	private BlockingQueue mapTaskQueue = null;//new LinkedBlockingQueue();
+	private BlockingQueue reduceTaskQueue = null;//new LinkedBlockingQueue();
     
-    private MapWorker<K1, V1, K2, V2> [] mapThreads = null;
-    private ReduceWorker<K2, V2, V3> [] reduceThreads = null;
+    private MapWorker [] mapThreads = null;
+    private ReduceWorker [] reduceThreads = null;
 
-    private AbstractMap<K2, AbstractCollection<V2>> shuffleMap = new ConcurrentHashMap<K2, AbstractCollection<V2>>(300*300, 0.75f, 4);
+    private AbstractMap<Object, AbstractCollection<Object>> shuffleMap = null;//new ConcurrentHashMap(300*300, 0.75f, 4);
     
     private long totalTime = 0;
 
     public MapReduce(int mapThreadCount, int reduceThreadCount) {
     	//stupid generic arrays
-    	MapWorker<K1, V1, K2, V2> dummyMapThread = new MapWorker<>(mapTaskQueue, this);
-    	ReduceWorker<K2, V2, V3> dummyReduceThread = new ReduceWorker<>(reduceTaskQueue);
+    	MapWorker dummyMapThread = new MapWorker(this);
+    	ReduceWorker dummyReduceThread = new ReduceWorker();
         
         dummyMapThread.kill();
         dummyReduceThread.kill();
         
-        mapThreads = (MapWorker<K1, V1, K2, V2> []) Array.newInstance(dummyMapThread.getClass(), mapThreadCount);
-        reduceThreads = (ReduceWorker<K2, V2, V3> []) Array.newInstance(dummyReduceThread.getClass(), reduceThreadCount);
+        mapThreads = (MapWorker []) Array.newInstance(dummyMapThread.getClass(), mapThreadCount);
+        reduceThreads = (ReduceWorker []) Array.newInstance(dummyReduceThread.getClass(), reduceThreadCount);
         
         for (int i = 0;i < mapThreads.length;i++) {
-            mapThreads[i] = new MapWorker<K1, V1, K2, V2>(mapTaskQueue, this);
+            mapThreads[i] = new MapWorker(this);
         }
         
         for (int i = 0;i < reduceThreads.length;i++) {
-            reduceThreads[i] = new ReduceWorker<K2, V2, V3>(reduceTaskQueue);
+            reduceThreads[i] = new ReduceWorker();
         }
         
     }
     
-    public void invoke(DataSource<K1, V1> source, Map<K1, V1, K2, V2> mapFunction, Reduce<K2, V2, V3> reduceFunction) {
+    public <K1, V1, K2, V2, V3, R> R invoke(
+    		DataSource<K1, V1> source, 
+    		Map<K1, V1, K2, V2> mapFunction, 
+    		Reduce<K2, V2, V3> reduceFunction,
+    		DataAssembly<K2, V3, R> assembly) {
+    	
+    	this.mapTaskQueue = new LinkedBlockingQueue<KeyValue<K1, V1>>();
+    	this.reduceTaskQueue = new LinkedBlockingQueue<KeyValue<K2, V2 []>>();
+    	this.shuffleMap = new ConcurrentHashMap(300*300, 0.75f, 4);
     	applyMap(source, mapFunction);
-    	applyReduce(reduceFunction);
+    	return assembly.assemble(applyReduce(reduceFunction));
     }
     
-    public void killThreads() {
-        for (MapWorker<K1, V1, K2, V2> t : mapThreads) {
+    public <K1, V1, K2, V2, V3, R, T extends DataSource<K1, V1> & Map<K1, V1, K2, V2> & Reduce<K2, V2, V3> & DataAssembly<K2, V3, R>> R invoke(T t) {
+    	return invoke(t, t, t, t);
+    }
+    
+    public void dispose() {
+        for (MapWorker t : mapThreads) {
             t.kill();
         }
         
-        for (ReduceWorker<K2, V2, V3> t : reduceThreads) {
+        for (ReduceWorker t : reduceThreads) {
             t.kill();
         }
     }
     
-    private void applyMap(DataSource<K1, V1> source, Map<K1, V1, K2, V2> mapFunction) {
+    private <K1, V1, K2, V2> void applyMap(DataSource<K1, V1> source, Map<K1, V1, K2, V2> mapFunction) {
+    	long startTime = System.currentTimeMillis();
+        totalTime = startTime;
+        
+        //start map threads
+        for (MapWorker t : mapThreads) {
+        	t.setMapFunction(mapFunction);
+            t.startProcessing(mapTaskQueue);
+        }
+        
         //read tasks from data source
         source.apply(new Emitter<K1, V1>() {
 			public void emit(K1 key, V1 value) {
 				mapTaskQueue.add(new KeyValue<K1, V1>(key, value));
 			}
 		});
-    	
-    	long startTime = System.currentTimeMillis();
-        totalTime = startTime;
         
-        //start map threads
-        for (MapWorker<K1, V1, K2, V2> t : mapThreads) {
-        	t.setMapFunction(mapFunction);
-            t.startProcessing();
-        }
-        
-
-        
-        for (MapWorker<K1, V1, K2, V2> t : mapThreads) {
+        //add sentinel nodes to indicate end of mapTaskQueue
+        for (MapWorker t : mapThreads) {
         	mapTaskQueue.add(new KeyValue<K1, V1>(null, null));
         }
         
         //wait for map threads to finish
-        for (MapWorker<K1, V1, K2, V2> t : mapThreads) {
+        for (MapWorker t : mapThreads) {
             t.waitForProcessing();
         }
 
         System.out.println("Mapping finished in " + (System.currentTimeMillis() - startTime) + " milliseconds");
     }
     
-    private void applyReduce(Reduce<K2, V2, V3> reduceFunction) {
+    private <K2, V2, V3> ArrayList<KeyValue<K2, V3>> applyReduce(Reduce<K2, V2, V3> reduceFunction) {
         long startTime = System.currentTimeMillis();
         
         KeyValue<K2, V2 []> [] shuffeled = shuffle();
         
         //keep this for future debugging purposes
-        /*for (KeyValue<K, V []> kv : shuffeled) {
+        /*for (KeyValue<K2, V2 []> kv : shuffeled) {
             System.out.print(kv.getKey() + ": ");
-            for (V v : kv.getValue()) {
+            for (V2 v : kv.getValue()) {
                 System.out.print(v + ", ");
             }
             System.out.println("\n");
@@ -121,29 +132,26 @@ public class MapReduce<K1, V1, K2, V2, V3> implements Emitter<K2, V2> {
         }
         
         //start reduce workers
-        for (ReduceWorker<K2, V2, V3> t : reduceThreads) {
+        for (ReduceWorker t : reduceThreads) {
         	reduceTaskQueue.add(new KeyValue<K2, V2 []>(null, null));
         	t.setReduceFunctio(reduceFunction);
-            t.startProcessing();
+            t.startProcessing(reduceTaskQueue);
         }
         
         ArrayList<KeyValue<K2, V3>> resultList = new ArrayList<>();
         
         //wait for reduce workers to finish
-        for (ReduceWorker<K2, V2, V3> t : reduceThreads) {
+        for (ReduceWorker t : reduceThreads) {
             resultList.addAll(t.waitForProcessing());
         }
-        
-        //write results to data sink
-        //TODO
-        
         
         System.out.println("Reducing finished in " + (System.currentTimeMillis() - startTime) + " milliseconds");
         System.out.println("MapReduce finished in " + (System.currentTimeMillis() - totalTime) + " milliseconds");
         
+        return resultList;
     }
     
-    private KeyValue<K2, V2 []> [] shuffle() {	        
+    private <K2, V2> KeyValue<K2, V2 []> [] shuffle() {	        
         //now convert hashmap into keyvalue array using stupid hacks
         //stupid generic arrays
         KeyValue<K2, V2 []> dummy = new KeyValue<K2, V2 []>(null, null);
@@ -153,8 +161,11 @@ public class MapReduce<K1, V1, K2, V2, V3> implements Emitter<K2, V2> {
         V2 [] dummyArray = (V2 []) new Object[1];
         
         int i = 0;
-        for (K2 key : shuffleMap.keySet()) {
-            V2 [] combinedValues = shuffleMap.get(key).toArray(dummyArray);
+        for (Object okey : shuffleMap.keySet()) {
+            K2 key = (K2) okey;
+        	//V2 [] combinedValues = shuffleMap.get(key).toArray(dummyArray); sometimes toArray will return the same reference for all keys?
+            V2 [] combinedValues = shuffleMap.get(key).toArray(dummyArray).clone();
+        	
             shuffle[i] = new KeyValue<K2, V2 []>(key, combinedValues);
             
             i++;
@@ -164,10 +175,10 @@ public class MapReduce<K1, V1, K2, V2, V3> implements Emitter<K2, V2> {
     }
 
 	@Override
-	public void emit(K2 key, V2 value) {
+	public void emit(Object key, Object value) {
 		
         //if (!shuffleMap.containsKey(key)) {
-    	shuffleMap.putIfAbsent(key, new ConcurrentLinkedQueue<V2>());
+    	shuffleMap.putIfAbsent(key, new ConcurrentLinkedQueue<Object>());
         //}
         
         shuffleMap.get(key).add(value);
