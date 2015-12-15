@@ -74,14 +74,18 @@ public class Matrix {
 		String r = "";
 		
 		for (int y = 0;y < values.length;y++) {
-			r += "[" + values[y][0];
+			r += "[" + round(values[y][0], 3);
 			for (int x = 1;x < values[y].length;x++) {
-				r += ", " + values[y][x];
+				r += ", " + round(values[y][x], 3);
 			}
 			r += "]\n";
 		}
 		
 		return r;
+	}
+	
+	private double round(double d, int decimals) {
+	    return ((double)Math.round(d * Math.pow(10, decimals)))/Math.pow(10, decimals);
 	}
 	
 	public static Matrix getUnit(int size) {
